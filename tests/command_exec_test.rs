@@ -1,4 +1,5 @@
 use std::io;
+use std::io::{stdout, Write};
 use std::process::{Command, Stdio};
 use std::os::unix::process::CommandExt;
 
@@ -40,11 +41,52 @@ fn test_exec() {
 
     # [ignore]
     # [should_panic]
-    fn exec_err() {
+    fn _exec_err() {
         Command::new("bash")
             .arg("-c")
             .exec();
         println!("如果出错就看不到我惹")
     }
     // 上面这个不是panic，直接替换进程然后在libc处强行结束了gcc
+}
+
+// 下面这些需要在命令行中执行，幽默老JB厂不能输入流进去
+# [test]
+fn test_lines() {
+    use std::io::BufRead;
+    
+    // Ctrl+D 结束 EOF
+    let stdin = io::stdin();
+    let iterator = stdin.lock().lines();
+
+    for line in iterator {
+        let line = line.expect("Failed to read line");
+        println!("Line: {}", line);
+    }
+
+    println!("Input stream ended.");
+}
+
+// 测试是按尾缀通配符匹配的 .*?$
+// test_line就是test_line*来执行多个测试项目了
+// 测试项目不能println
+# [test]
+fn test_line2() {
+    use std::io::{self, BufRead};
+
+    // 按行读取
+    let stdin = io::stdin();
+    let mut iterator = stdin.lock().lines();
+
+    while let Some(Ok(line)) = iterator.next() {
+        println!("Line: {}", line);
+        stdout().flush().unwrap();
+
+        // 某个条件满足时退出循环
+        if line == "exit" {
+            break;
+        }
+    }
+
+    println!("Exited the loop.");
 }
