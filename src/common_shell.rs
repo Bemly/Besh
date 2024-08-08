@@ -35,9 +35,10 @@
 // libc::execvp(self.get_program_cstr().as_ptr(), self.get_argv().as_ptr());
 // source: https://stdrs.dev/nightly/x86_64-unknown-linux-gnu/src/std/sys/unix/process/process_unix.rs.html#473
 
-use std::io::{self, stdin, stdout, Write};
+use std::io::{stdin, stdout, Write};
 use std::process::{Command, exit, Output};
-use super::error::*;
+use std::{env, io, fs};
+use std::path::PathBuf;
 
 // rust 有各种平台实现，可以跨平台编译使用
 pub fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
@@ -59,51 +60,67 @@ pub fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         exec_cmd(Command::new(cmd).args(args.iter().skip(1)).output(), cmd)?;
     }
 
-    // 获取用户名和主机名
-    let username = std::env::var("USER")
+    // 获取用户名和主机名 第一层环境变量 第二层使用软件 大气层恐慌
+    let username = env::var("USER")
         .unwrap_or(String::from_utf8(Command::new("/usr/bin/whoami").output()?.stdout)?);
-    let hostname = std::fs::read_to_string("/etc/hostname")
+    let hostname = fs::read_to_string("/etc/hostname")
         .unwrap_or(String::from("unknown")).replace("\n", "");
     
-    // 获取当前工作目录（先转&str再转String加上所有权）
-    let mut pwd = std::env::current_dir()?.to_str().expect(NOT_FIND_CRR_DIR)
-        .replace(std::env::var("HOME").unwrap_or(String::from("~")).as_str(), "~");
+    // 获取当前工作目录 第一层环境变量 第二层使用软件 大气层恐慌
+    let mut pwd = env::current_dir()
+        .unwrap_or(
+            fs::canonicalize(
+                String::from_utf8(Command::new("/usr/bin/pwd").output()?.stdout)?.replace("\n", "")
+            )?
+        );
+
+    let homedir = Homedir::init(env::var("HOME").unwrap_or(String::new()));
 
     // 进入循环执行模式
     loop {
-        print!("{username}@{hostname} {pwd}> ");
+        // 显示：获取用户目录
+        print!("{username}@{hostname} {}> ", homedir.to_relative_home(&pwd));
         stdout().flush()?;
         // 读取用户输入
         let mut command_buffer = String::new();
         stdin().read_line(&mut command_buffer)?;
 
         // 捕获指定命令
-        match command_buffer.trim() {
-            // 退出程序 没有正则的痛苦 哇的一声就哭出来了昂
+        // TODO: 屎山代码 分割空格为 实现了迭代器方法的spw对象
+        // cmd从program弹出，剩下的是参数
+        let mut program = command_buffer.trim().split_whitespace();
+        let cmd = program.next().unwrap_or("");
+        match cmd {
+            // 退出程序 最穷举的一集
             "exit" | "exit()" | "quit" | "qui" | "qu" | "q" | ":q" => exit(0),
-            // 就是空行
+            // 就是空行 上方None替换
             "" => println!(),
-            // 执行路径下软件或者脚本
-            s => {
-                // TODO: 屎山代码 分割空格为 实现了迭代器方法的spw对象
-                let mut program = s.split_whitespace();
-                let cmd = program.next().expect(NOT_GET_PROGRAM_NAME);
-                match cmd { 
-                    "cd" => {
-                        // 获取当前工作目录
-                        let pwd = std::env::current_dir()?;
-                        // 获取用户输入的路径
-                        let path = program.next().expect(NOT_GET_PATH);
-                        // 获取用户输入的路径
-                        let path = std::path::Path::new(path);
-                        // 获取用户输入的路径的绝对路径
-                        let path = path.canonicalize()?;
-                        // 获取用户输入的路径的绝对路径的字符串
-                        let path = path.to_str().expect(NOT_GET_PATH);
-                    },
-                    _ => exec_cmd(Command::new(cmd).args(program).output(), cmd)?
+            "cd" => {
+                // 没有参数
+                let args = program.next().unwrap_or("");
+                // 多个参数
+                if args.eq("") { println!() }
+                else if program.count().eq(&0usize) {
+                    homedir.to_absoulte_home(args, &mut pwd);
+                    println!("{pwd:?}");
+                    // unimplemented!  替换~的Bug 暂时不想修了 做libc调用的时候再考虑
+                    pwd = match fs::canonicalize(&pwd) {
+                        Ok(pwd) => {
+                            println!("{cmd}: success change dir to : {args} 成功切换目录到: {args}");
+                            pwd
+                        },
+                        Err(e) => {
+                            println!("besh: {cmd}: {e}");
+                            PathBuf::from(homedir.path.clone())
+                        }
+                    }
+                    
+                } else {
+                    println!("besh: {cmd}: too many arguments. 只允许一个参数")
                 }
-            }
+            },
+            // 执行路径下软件或者脚本
+            _ => exec_cmd(Command::new(cmd).args(program).current_dir(&pwd).output(), cmd)?
         }
     }
 }
@@ -117,6 +134,27 @@ fn exec_cmd(result: Result<Output, io::Error>, cmd: &str) -> Result<(), Box<dyn 
     }
     Ok(())
 }
+
+struct Homedir<'a> {
+    path: String,
+    name: &'a str
+}
+impl<'a> Homedir<'a> {
+    fn init(path: String) -> Self {
+        Homedir { path, name: "~" }
+    }
+    fn to_absoulte_home(&self, args: &str, pwd: &mut PathBuf) {
+        // 替换掉~通配符之后再push拼接
+        if args.find(self.name).unwrap_or(0).eq(&0) {
+            pwd.push(args.replacen(self.name, &self.path, 1))
+        }
+    }
+
+    fn to_relative_home(&self, pwd: &PathBuf) -> String {
+        pwd.to_str().unwrap_or("").replacen(&self.path, self.name, 1)
+    }
+}
+
 
 // 参考
 // source: https://github.com/xitu/gold-miner/blob/master/TODO1/tutorial-write-a-shell-in-c.md
