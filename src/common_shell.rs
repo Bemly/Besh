@@ -35,67 +35,87 @@
 // libc::execvp(self.get_program_cstr().as_ptr(), self.get_argv().as_ptr());
 // source: https://stdrs.dev/nightly/x86_64-unknown-linux-gnu/src/std/sys/unix/process/process_unix.rs.html#473
 
-
-
-use std::io::{stdin, stdout, Write};
-use std::process::{Command, exit};
-
+use std::io::{self, stdin, stdout, Write};
+use std::process::{Command, exit, Output};
+use super::error::*;
 
 // rust 有各种平台实现，可以跨平台编译使用
-pub fn main(cmd: Vec<String>) {
+pub fn main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Welcome to the Bemly shell!\n");
 
     // 快速执行命令
-    if cmd.len() != 0 {
-        // println!("{}", cmd.get(0).unwrap());
-        //
+    if args.len() != 0 {
+
         // match cmd.get(0).unwrap().to_lowercase().trim() {
         //     // 指定参数功能输出
         //     "-h" | "--help" => println!("toggle use libc shell: -u | --use-libc"),
         //     _ => todo!()
         // }
 
-        let s = String::from_utf8(
-            Command::new(cmd.get(0).unwrap())
-                .args(cmd.iter().skip(1))
-                .output()
-                .expect("[TODO!] Failed to execute command. 命令执行失败")
-                .stdout
-        ).unwrap();
-        println!("{s}");
+        // exec_cmd：命令执行体，命令名
+        // 命令执行体：命令名，参数数组
+        let cmd = args.get(0).unwrap().as_str();
+        exec_cmd(Command::new(cmd).args(args.iter().skip(1)).output(), cmd)?;
     }
+
+    // 获取用户名和主机名
+    let username = std::env::var("USER")
+        .unwrap_or(String::from_utf8(Command::new("/usr/bin/whoami").output()?.stdout)?);
+    let hostname = std::fs::read_to_string("/etc/hostname")
+        .unwrap_or(String::from("unknown")).replace("\n", "");
+    
+    // 获取当前工作目录（先转&str再转String加上所有权）
+    let mut pwd = std::env::current_dir()?.to_str().expect(NOT_FIND_CRR_DIR)
+        .replace(std::env::var("HOME").unwrap_or(String::from("~")).as_str(), "~");
 
     // 进入循环执行模式
     loop {
-
-        print!("> ");
-        stdout().flush().expect("[TODO!] Failed to flush stdout. 输出流刷新失败");
-
-
+        print!("{username}@{hostname} {pwd}> ");
+        stdout().flush()?;
         // 读取用户输入
         let mut command_buffer = String::new();
-        stdin().read_line(&mut command_buffer).expect("[TODO!] Failed to read line. 读取输入失败");
+        stdin().read_line(&mut command_buffer)?;
 
+        // 捕获指定命令
         match command_buffer.trim() {
-            "exit" => exit(0),
-            "cd" => todo!(),
+            // 退出程序 没有正则的痛苦 哇的一声就哭出来了昂
+            "exit" | "exit()" | "quit" | "qui" | "qu" | "q" | ":q" => exit(0),
+            // 就是空行
+            "" => println!(),
+            // 执行路径下软件或者脚本
             s => {
+                // TODO: 屎山代码 分割空格为 实现了迭代器方法的spw对象
                 let mut program = s.split_whitespace();
-                let s = String::from_utf8(
-                    Command::new(program.next().unwrap())
-                        .args(program)
-                        .output()
-                        .expect("[TODO!] Failed to execute command. 命令执行失败")
-                        .stdout
-                ).expect("[TODO!] Failed to convert output to string. 输出转换为字符串失败");
-                println!("{s}");
+                let cmd = program.next().expect(NOT_GET_PROGRAM_NAME);
+                match cmd { 
+                    "cd" => {
+                        // 获取当前工作目录
+                        let pwd = std::env::current_dir()?;
+                        // 获取用户输入的路径
+                        let path = program.next().expect(NOT_GET_PATH);
+                        // 获取用户输入的路径
+                        let path = std::path::Path::new(path);
+                        // 获取用户输入的路径的绝对路径
+                        let path = path.canonicalize()?;
+                        // 获取用户输入的路径的绝对路径的字符串
+                        let path = path.to_str().expect(NOT_GET_PATH);
+                    },
+                    _ => exec_cmd(Command::new(cmd).args(program).output(), cmd)?
+                }
             }
-        };
-
-
-
+        }
     }
+}
+
+// 执行命令
+fn exec_cmd(result: Result<Output, io::Error>, cmd: &str) -> Result<(), Box<dyn std::error::Error>> {
+    match result {
+        // 匹配Result()结果，成功则从stdout流打印输出结果，失败打印stderr流
+        Ok(output) => { println!("{}", String::from_utf8(output.stdout)?) },
+        Err(e) => { eprintln!("besh: {cmd}: {e}") }
+    }
+    Ok(())
 }
 
 // 参考

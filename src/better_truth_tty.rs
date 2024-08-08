@@ -1,4 +1,4 @@
 
-pub fn main(args: Vec<String>) {
+pub fn main(_args: Vec<String>) {
 
 }
