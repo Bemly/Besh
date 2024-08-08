@@ -54,7 +54,7 @@ fn test_exec() {
 # [test]
 fn test_lines() {
     use std::io::BufRead;
-    
+
     // Ctrl+D 结束 EOF
     let stdin = io::stdin();
     let iterator = stdin.lock().lines();
@@ -89,4 +89,12 @@ fn test_line2() {
     }
 
     println!("Exited the loop.");
+}
+
+# [test]
+fn test_get_program() {
+    use std::process::Command;
+
+    let cmd = Command::new("echo");
+    assert_eq!(cmd.get_program(), "echo");
 }
