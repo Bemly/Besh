@@ -1,6 +1,8 @@
-﻿function sr {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+﻿
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
+function sr {
+    
     Add-Type -AssemblyName System.Web
 
     $ProgressPreference = 'SilentlyContinue'
