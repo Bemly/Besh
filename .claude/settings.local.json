@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/bemly/cchaha/Besh -type f -name *.rs)",
+      "Bash(cargo build:*)",
+      "Bash(./target/release/besh -v)",
+      "Bash(./target/release/besh)",
+      "Bash(./target/release/besh -c \"echo 'Hello from Besh!'\")",
+      "Bash(ls /Users/bemly/cchaha/Besh/*.rs)",
+      "Bash(echo -e \"cd /Users/bemly/cchaha/Besh\\\\necho \"\"Current directory:\"\"\\\\npwd\\\\necho \"\"Files:\"\"\\\\nls -la\\\\nexit\")",
+      "Bash(echo -e \"export NAME=Besh\\\\necho \"\"Running $NAME shell\"\"\\\\necho \"\"Test command var:\"\"\\\\ncmd=\"\"echo hello\"\"\\\\n$cmd\\\\nexit\")",
+      "Bash(cargo test:*)",
+      "Bash(git stash:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(./target/release/besh --help)",
+      "Bash(git rm:*)",
+      "Bash(cargo doc:*)",
+      "Bash(xargs -I{} basename {} .rs)"
+    ]
+  }
+}
