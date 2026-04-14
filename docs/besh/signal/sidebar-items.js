@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Signal"],"fn":["block_signals","get_foreground_pgroup","get_shell_pgid","get_shell_pid","set_foreground_pgroup","setup_signal_handlers","sigchld_handler","sigint_handler","sigtstp_handler","tcgetpgrp","tcsetpgrp","unblock_signals","was_signal_received"],"static":["SIGNAL_RECEIVED"],"struct":["SignalGuard"],"type":["SignalHandler"]};

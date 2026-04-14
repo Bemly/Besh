@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["execute_commands","execute_single_command","gethostname","is_exit_command","open_file_to_redir","read_line","repl","run_non_interactive","run_script","run_shell"]};

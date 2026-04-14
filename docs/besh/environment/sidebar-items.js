@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["environ_ptr","has_var_in_environ","load_environment"],"static":["environ"],"struct":["Environment","PromptComponents"]};

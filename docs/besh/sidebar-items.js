@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["better_truth_tty","common_shell","error"]};
+window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["builtin","common_shell","environment","error","history","job_control","parser","process","shell","signal","terminal"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ECHO","ICANON","ISIG","TCSANOW","VMIN","VTIME"],"fn":["complete","isatty","redraw_line","tcgetattr","tcsetattr","terminal_size"],"mod":["color"],"struct":["Terminal","termios"],"type":["c_int"]};

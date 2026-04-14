@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ExitStatus"],"fn":["builtin_cd","builtin_echo","builtin_env","builtin_exit","builtin_export","builtin_history","builtin_jobs","builtin_pwd","builtin_set","builtin_unset","execute_builtin","has_var_in_environ","is_builtin"],"struct":["ShellState"]};

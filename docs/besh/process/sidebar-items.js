@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ExitStatus","Redirection"],"fn":["close_all_fds_except","redirect_fd"],"struct":["Pipe","Process","ProcessBuilder"],"type":["Fd"]};

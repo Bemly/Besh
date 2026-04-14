@@ -1,0 +1,9 @@
+(function() {
+    const implementors = Object.fromEntries([["besh",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.94.1/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"besh/builtin/struct.ShellState.html\" title=\"struct besh::builtin::ShellState\">ShellState</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.94.1/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"besh/environment/struct.Environment.html\" title=\"struct besh::environment::Environment\">Environment</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.94.1/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"besh/environment/struct.PromptComponents.html\" title=\"struct besh::environment::PromptComponents\">PromptComponents</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.94.1/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"besh/history/struct.History.html\" title=\"struct besh::history::History\">History</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.94.1/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"besh/job_control/struct.JobControl.html\" title=\"struct besh::job_control::JobControl\">JobControl</a>",0]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":59,"fragment_lengths":[1456]}

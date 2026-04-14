@@ -1,5 +1,2 @@
-var srcIndex = new Map(JSON.parse('[\
-["besh",["",[],["better_truth_tty.rs","common_shell.rs","error.rs","main.rs"]]],\
-["libc",["",[["unix",[["linux_like",[["linux",[["arch",[["generic",[],["mod.rs"]]],["mod.rs"]],["gnu",[["b64",[["x86_64",[],["align.rs","mod.rs","not_x32.rs"]]],["mod.rs"]]],["align.rs","mod.rs"]]],["align.rs","mod.rs","non_exhaustive.rs"]]],["mod.rs"]]],["align.rs","mod.rs"]]],["fixed_width_ints.rs","lib.rs","macros.rs"]]]\
-]'));
-createSrcSidebar();
+createSrcSidebar('[["besh",["",[],["builtin.rs","common_shell.rs","environment.rs","error.rs","history.rs","job_control.rs","main.rs","parser.rs","process.rs","shell.rs","signal.rs","terminal.rs"]]]]');
+//{"start":19,"fragment_lengths":[179]}
