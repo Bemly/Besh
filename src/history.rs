@@ -120,7 +120,7 @@ impl History {
                 if i >= 0 {
                     i as usize
                 } else {
-                    len - i.abs() as usize - 1
+                    (len as i32 + i) as usize
                 }
             }
             None => len - 1,
@@ -236,5 +236,62 @@ mod tests {
 
         assert_eq!(hist.entries().len(), 2);
         assert_eq!(hist.get(None), Some("ls".to_string()));
+    }
+
+    #[test]
+    fn test_empty_command_ignored() {
+        let mut hist = History::new();
+        hist.add("".to_string());
+        hist.add("   ".to_string());
+        assert_eq!(hist.entries().len(), 0);
+    }
+
+    #[test]
+    fn test_get_by_index() {
+        let mut hist = History::new();
+        hist.add("a".to_string());
+        hist.add("b".to_string());
+        hist.add("c".to_string());
+
+        assert_eq!(hist.get(Some(0)), Some("a".to_string()));
+        assert_eq!(hist.get(Some(2)), Some("c".to_string()));
+        assert_eq!(hist.get(Some(10)), None);
+        // Negative index: -1 = last, -2 = second to last
+        assert_eq!(hist.get(Some(-1)), Some("c".to_string()));
+        assert_eq!(hist.get(Some(-2)), Some("b".to_string()));
+    }
+
+    #[test]
+    fn test_clear_history() {
+        let mut hist = History::new();
+        hist.add("a".to_string());
+        hist.add("b".to_string());
+        hist.clear();
+        assert_eq!(hist.entries().len(), 0);
+        assert_eq!(hist.next(), None);
+    }
+
+    #[test]
+    fn test_history_file_path() {
+        let hist = History::new();
+        assert!(hist.file().ends_with(".besh_history"));
+    }
+
+    #[test]
+    fn test_save_and_load() {
+        let mut hist = History::new();
+        // Use a unique file to avoid race conditions
+        let unique_file = std::env::temp_dir().join(format!("besh_test_hist_{}", std::process::id()));
+        hist.history_file = unique_file.clone();
+        hist.add("saved_cmd".to_string());
+        hist.save().unwrap();
+
+        let mut hist2 = History::new();
+        hist2.history_file = unique_file.clone();
+        hist2.load().unwrap();
+        assert!(hist2.entries().contains(&"saved_cmd".to_string()));
+
+        // Cleanup
+        let _ = std::fs::remove_file(&unique_file);
     }
 }

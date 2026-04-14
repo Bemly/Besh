@@ -462,9 +462,108 @@ mod tests {
 
     #[test]
     fn test_variable_expansion() {
-        assert_eq!(
-            expand_variables("Hello $USER", |k| k.is_empty().then_some("World".to_string())),
-            "Hello World"
-        );
+        let vars = |k: &str| match k {
+            "NAME" => Some("World".to_string()),
+            _ => None,
+        };
+        assert_eq!(expand_variables("Hello $NAME", vars), "Hello World");
+    }
+
+    #[test]
+    fn test_variable_expansion_braced() {
+        let vars = |k: &str| match k {
+            "VAR" => Some("value".to_string()),
+            _ => None,
+        };
+        assert_eq!(expand_variables("${VAR}_suffix", vars), "value_suffix");
+    }
+
+    #[test]
+    fn test_variable_expansion_undefined() {
+        let vars = |_: &str| None;
+        assert_eq!(expand_variables("$UNDEF", vars), "");
+    }
+
+    #[test]
+    fn test_variable_expansion_multiple() {
+        let vars = |k: &str| match k {
+            "A" => Some("1".to_string()),
+            "B" => Some("2".to_string()),
+            _ => None,
+        };
+        assert_eq!(expand_variables("$A+$B", vars), "1+2");
+    }
+
+    #[test]
+    fn test_parse_three_stage_pipeline() {
+        let commands = parse_command_line("cat file | grep foo | wc -l").unwrap();
+        assert_eq!(commands.len(), 3);
+        assert_eq!(commands[0].program, "cat");
+        assert_eq!(commands[1].program, "grep");
+        assert_eq!(commands[2].program, "wc");
+        assert_eq!(commands[2].args, vec!["-l"]);
+    }
+
+    #[test]
+    fn test_parse_stderr_redirect() {
+        let commands = parse_command_line("ls 2> errors.txt").unwrap();
+        assert_eq!(commands.len(), 1);
+        assert!(commands[0].stderr.is_some());
+    }
+
+    #[test]
+    fn test_parse_append_redirect() {
+        let commands = parse_command_line("echo data >> file.txt").unwrap();
+        assert_eq!(commands.len(), 1);
+        assert!(commands[0].stdout.is_some());
+        match &commands[0].stdout {
+            Some(Redirection::File(s)) => assert!(s.starts_with("append:")),
+            _ => panic!("expected append redirection"),
+        }
+    }
+
+    #[test]
+    fn test_parse_background_pipeline() {
+        let commands = parse_command_line("cat file | grep foo &").unwrap();
+        assert_eq!(commands.len(), 2);
+        assert!(commands[1].background);
+    }
+
+    #[test]
+    fn test_parse_single_quoted() {
+        let commands = parse_command_line("echo 'hello world'").unwrap();
+        assert_eq!(commands[0].args, vec!["hello world"]);
+    }
+
+    #[test]
+    fn test_parse_escaped_chars() {
+        let commands = parse_command_line(r"echo hello\ world").unwrap();
+        assert_eq!(commands[0].args, vec!["hello world"]);
+    }
+
+    #[test]
+    fn test_parse_empty_input() {
+        let commands = parse_command_line("").unwrap();
+        assert!(commands.is_empty());
+    }
+
+    #[test]
+    fn test_parse_whitespace_only() {
+        let commands = parse_command_line("   \t  ").unwrap();
+        assert!(commands.is_empty());
+    }
+
+    #[test]
+    fn test_command_as_argv() {
+        let cmd = Command {
+            program: "ls".to_string(),
+            args: vec!["-la".to_string(), "/tmp".to_string()],
+            stdin: None,
+            stdout: None,
+            stderr: None,
+            background: false,
+        };
+        let argv = cmd.as_argv();
+        assert_eq!(argv, vec!["ls", "-la", "/tmp"]);
     }
 }

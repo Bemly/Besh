@@ -27,7 +27,11 @@ pub fn run_shell(args: Vec<String>) -> Result<()> {
     }
 
     if !is_tty {
-        // Non-interactive mode - handle single command or piped input
+        // If args were provided, execute them as a command directly
+        if !args.is_empty() {
+            return run_command_args(args);
+        }
+        // No args - read from stdin
         return run_non_interactive(args);
     }
 
@@ -110,6 +114,113 @@ fn run_script(args: &[String]) -> Result<()> {
     Ok(())
 }
 
+/// Execute command arguments directly (e.g., besh echo hello)
+fn run_command_args(args: Vec<String>) -> Result<()> {
+    let mut state = ShellState::new()?;
+    let input = args.join(" ");
+    let commands = parse_command_line(&input)?;
+
+    for cmd in commands {
+        if is_builtin(&cmd.program) {
+            let _guard = setup_builtin_redirections(&cmd)?;
+            let result = execute_builtin(&cmd, &mut state);
+            if let Ok(exit_status) = result {
+                state.exit_code = exit_status.code();
+            }
+            if let Err(e) = result {
+                if !matches!(e, ShellError::CommandNotFound(_)) {
+                    eprintln!("besh: {}", e);
+                }
+            }
+        } else {
+            execute_single_command(&cmd, &mut state)?;
+        }
+    }
+    Ok(())
+}
+
+/// Temporarily redirect stdout/stderr for builtins
+struct FdGuard {
+    saved_stdout: Option<libc::c_int>,
+    saved_stderr: Option<libc::c_int>,
+    out_fd: Option<libc::c_int>,
+    err_fd: Option<libc::c_int>,
+}
+
+impl Drop for FdGuard {
+    fn drop(&mut self) {
+        unsafe {
+            if let Some(saved) = self.saved_stdout {
+                libc::dup2(saved, libc::STDOUT_FILENO);
+                libc::close(saved);
+            }
+            if let Some(saved) = self.saved_stderr {
+                libc::dup2(saved, libc::STDERR_FILENO);
+                libc::close(saved);
+            }
+            if let Some(fd) = self.out_fd {
+                libc::close(fd);
+            }
+            if let Some(fd) = self.err_fd {
+                libc::close(fd);
+            }
+        }
+    }
+}
+
+fn setup_builtin_redirections(cmd: &Command) -> Result<FdGuard> {
+    let mut guard = FdGuard {
+        saved_stdout: None, saved_stderr: None,
+        out_fd: None, err_fd: None,
+    };
+
+    unsafe {
+        if let Some(ref redir) = cmd.stdout {
+            if let Redirection::File(path) = redir {
+                let c_path = std::ffi::CString::new(
+                    if path.starts_with("append:") { &path[7..] } else { path.as_str() }
+                ).map_err(|_| ShellError::ParseError("Invalid path".to_string()))?;
+                let flags = if path.starts_with("append:") {
+                    libc::O_WRONLY | libc::O_CREAT | libc::O_APPEND
+                } else {
+                    libc::O_WRONLY | libc::O_CREAT | libc::O_TRUNC
+                };
+                let fd = libc::open(c_path.as_ptr(), flags, 0o644);
+                if fd < 0 {
+                    return Err(ShellError::IoError(io::Error::last_os_error()));
+                }
+                let saved = libc::dup(libc::STDOUT_FILENO);
+                libc::dup2(fd, libc::STDOUT_FILENO);
+                guard.saved_stdout = Some(saved);
+                guard.out_fd = Some(fd);
+            }
+        }
+
+        if let Some(ref redir) = cmd.stderr {
+            if let Redirection::File(path) = redir {
+                let c_path = std::ffi::CString::new(
+                    if path.starts_with("append:") { &path[7..] } else { path.as_str() }
+                ).map_err(|_| ShellError::ParseError("Invalid path".to_string()))?;
+                let flags = if path.starts_with("append:") {
+                    libc::O_WRONLY | libc::O_CREAT | libc::O_APPEND
+                } else {
+                    libc::O_WRONLY | libc::O_CREAT | libc::O_TRUNC
+                };
+                let fd = libc::open(c_path.as_ptr(), flags, 0o644);
+                if fd < 0 {
+                    return Err(ShellError::IoError(io::Error::last_os_error()));
+                }
+                let saved = libc::dup(libc::STDERR_FILENO);
+                libc::dup2(fd, libc::STDERR_FILENO);
+                guard.saved_stderr = Some(saved);
+                guard.err_fd = Some(fd);
+            }
+        }
+    }
+
+    Ok(guard)
+}
+
 /// Run in non-interactive mode
 fn run_non_interactive(_args: Vec<String>) -> Result<()> {
     let mut state = ShellState::new()?;
@@ -141,6 +252,7 @@ fn run_non_interactive(_args: Vec<String>) -> Result<()> {
         // Execute without job control for non-interactive mode
         for cmd in commands {
             if is_builtin(&cmd.program) {
+                let _guard = setup_builtin_redirections(&cmd)?;
                 let result = execute_builtin(&cmd, &mut state);
                 if let Ok(exit_status) = result {
                     state.exit_code = exit_status.code();
@@ -162,12 +274,62 @@ fn run_non_interactive(_args: Vec<String>) -> Result<()> {
 
 /// Execute a single command in non-interactive mode
 fn execute_single_command(cmd: &Command, _state: &mut ShellState) -> Result<()> {
-    use crate::process::ProcessBuilder;
+    let mut sys_cmd = std::process::Command::new(&cmd.program);
+    sys_cmd.args(&cmd.args);
 
-    // Create a child process
-    let output = std::process::Command::new(&cmd.program)
-        .args(&cmd.args)
-        .output()?;
+    // Apply stdin redirection
+    if let Some(ref redir) = cmd.stdin {
+        match redir {
+            Redirection::File(path) => {
+                let file = std::fs::File::open(path)
+                    .map_err(ShellError::IoError)?;
+                sys_cmd.stdin(file);
+            }
+            _ => {}
+        }
+    }
+
+    // Apply stdout redirection
+    if let Some(ref redir) = cmd.stdout {
+        match redir {
+            Redirection::File(path) => {
+                if path.starts_with("append:") {
+                    let file = std::fs::OpenOptions::new()
+                        .create(true).append(true)
+                        .open(&path[7..])
+                        .map_err(ShellError::IoError)?;
+                    sys_cmd.stdout(file);
+                } else {
+                    let file = std::fs::File::create(path)
+                        .map_err(ShellError::IoError)?;
+                    sys_cmd.stdout(file);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Apply stderr redirection
+    if let Some(ref redir) = cmd.stderr {
+        match redir {
+            Redirection::File(path) => {
+                if path.starts_with("append:") {
+                    let file = std::fs::OpenOptions::new()
+                        .create(true).append(true)
+                        .open(&path[7..])
+                        .map_err(ShellError::IoError)?;
+                    sys_cmd.stderr(file);
+                } else {
+                    let file = std::fs::File::create(path)
+                        .map_err(ShellError::IoError)?;
+                    sys_cmd.stderr(file);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let output = sys_cmd.output()?;
 
     // Print stdout
     if !output.stdout.is_empty() {

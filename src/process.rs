@@ -428,4 +428,43 @@ mod tests {
         assert_eq!(ExitStatus::Exited(42).code(), Some(42));
         assert_eq!(ExitStatus::Signaled(9).code(), None);
     }
+
+    #[test]
+    fn test_process_with_args() {
+        let builder = ProcessBuilder::new("printf")
+            .arg("hello_%s")
+            .arg("world");
+
+        let process = builder.spawn().unwrap();
+        let status = process.wait().unwrap();
+        assert!(status.success());
+    }
+
+    #[test]
+    fn test_process_pid_positive() {
+        let builder = ProcessBuilder::new("true");
+        let process = builder.spawn().unwrap();
+        assert!(process.pid() > 0);
+        let _ = process.wait();
+    }
+
+    #[test]
+    fn test_process_builder_clone() {
+        let builder = ProcessBuilder::new("echo").arg("test");
+        let builder2 = builder.clone();
+        assert_eq!(builder2.program, "echo");
+    }
+
+    #[test]
+    fn test_redirection_variants() {
+        assert_eq!(Redirection::File("a".to_string()), Redirection::File("a".to_string()));
+        assert_ne!(Redirection::File("a".to_string()), Redirection::File("b".to_string()));
+        assert_ne!(Redirection::Fd(0), Redirection::Pipe(0));
+    }
+
+    #[test]
+    fn test_pipe_both_ends() {
+        let pipe = Pipe::new().unwrap();
+        assert_ne!(pipe.read_fd(), pipe.write_fd());
+    }
 }

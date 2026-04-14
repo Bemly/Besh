@@ -356,4 +356,105 @@ mod tests {
         assert!(result.is_ok());
         assert!(result.unwrap().success());
     }
+
+    #[test]
+    fn test_all_builtins_recognized() {
+        let builtins = ["cd", "exit", "quit", "q", "pwd", "echo", "export",
+            "unset", "env", "history", "set", "jobs", "fg", "bg"];
+        for &b in &builtins {
+            assert!(is_builtin(b), "{} should be a builtin", b);
+        }
+        assert!(!is_builtin("ls"));
+        assert!(!is_builtin("cat"));
+        assert!(!is_builtin("grep"));
+    }
+
+    #[test]
+    fn test_export_builtin() {
+        let mut state = ShellState::new().unwrap();
+        let cmd = Command {
+            program: "export".to_string(),
+            args: vec!["TEST_EXPORT=val123".to_string()],
+            stdin: None, stdout: None, stderr: None, background: false,
+        };
+        let result = execute_builtin(&cmd, &mut state);
+        assert!(result.is_ok());
+        assert_eq!(state.get_var("TEST_EXPORT"), Some("val123".to_string()));
+    }
+
+    #[test]
+    fn test_unset_builtin() {
+        let mut state = ShellState::new().unwrap();
+        state.set_var("TO_REMOVE", "yes");
+        let cmd = Command {
+            program: "unset".to_string(),
+            args: vec!["TO_REMOVE".to_string()],
+            stdin: None, stdout: None, stderr: None, background: false,
+        };
+        execute_builtin(&cmd, &mut state).unwrap();
+        assert_eq!(state.get_var("TO_REMOVE"), None);
+    }
+
+    #[test]
+    fn test_cd_builtin() {
+        let mut state = ShellState::new().unwrap();
+        let original_cwd = state.cwd.clone();
+        let cmd = Command {
+            program: "cd".to_string(),
+            args: vec!["/tmp".to_string()],
+            stdin: None, stdout: None, stderr: None, background: false,
+        };
+        let result = execute_builtin(&cmd, &mut state);
+        assert!(result.is_ok());
+        assert!(state.cwd.to_string_lossy().contains("tmp"));
+
+        // Restore
+        let back = Command {
+            program: "cd".to_string(),
+            args: vec![original_cwd.to_string_lossy().to_string()],
+            stdin: None, stdout: None, stderr: None, background: false,
+        };
+        execute_builtin(&back, &mut state).unwrap();
+    }
+
+    #[test]
+    fn test_cd_home() {
+        let mut state = ShellState::new().unwrap();
+        let cmd = Command {
+            program: "cd".to_string(),
+            args: vec![],
+            stdin: None, stdout: None, stderr: None, background: false,
+        };
+        let result = execute_builtin(&cmd, &mut state);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_shell_state_var_operations() {
+        let mut state = ShellState::new().unwrap();
+        state.set_var("A", "1");
+        state.set_var("B", "2");
+        assert_eq!(state.get_var("A"), Some("1".to_string()));
+        assert_eq!(state.get_var("B"), Some("2".to_string()));
+        assert_eq!(state.get_var("C"), None);
+
+        state.unset_var("A").unwrap();
+        assert_eq!(state.get_var("A"), None);
+    }
+
+    #[test]
+    fn test_exit_status_code() {
+        assert_eq!(ExitStatus::Success(0).code(), 0);
+        assert!(ExitStatus::Success(0).success());
+        assert!(!ExitStatus::Failure(1).success());
+        assert_eq!(ExitStatus::Failure(42).code(), 42);
+    }
+
+    #[test]
+    fn test_builtin_not_found() {
+        let mut state = ShellState::new().unwrap();
+        let cmd = Command::new("not_a_builtin".to_string());
+        let result = execute_builtin(&cmd, &mut state);
+        assert!(result.is_err());
+    }
 }
