@@ -71,12 +71,9 @@ extern "C" fn sigtstp_handler(_signum: libc::c_int) {
 
 /// Signal handler for SIGCHLD
 extern "C" fn sigchld_handler(_signum: libc::c_int) {
-    // Reap zombie processes
+    // Just set the flag - don't reap here, let put_job_in_foreground handle it
     unsafe {
-        let mut status: libc::c_int = 0;
-        while libc::waitpid(-1, &mut status, libc::WNOHANG) > 0 {
-            // Child process terminated or changed state
-        }
+        SIGNAL_RECEIVED = true;
     }
 }
 

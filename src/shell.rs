@@ -7,7 +7,7 @@ use crate::history::History;
 use crate::job_control::JobControl;
 use crate::parser::{parse_command_line, Command};
 use crate::process::{Fd, Pipe, ProcessBuilder, Redirection};
-use crate::signal::{setup_signal_handlers, was_signal_received};
+use crate::signal::{setup_signal_handlers, was_signal_received, set_foreground_pgroup, get_shell_pgid};
 use crate::terminal::{isatty, Terminal, color};
 use std::collections::VecDeque;
 use std::io::{self, Write};
@@ -39,6 +39,13 @@ pub fn run_shell(args: Vec<String>) -> Result<()> {
 
     // Setup signal handlers
     setup_signal_handlers()?;
+
+    // Put shell in its own process group and take control of terminal
+    let shell_pid = unsafe { libc::getpid() };
+    unsafe {
+        libc::setpgid(shell_pid, shell_pid);
+    }
+    set_foreground_pgroup(libc::STDIN_FILENO, shell_pid)?;
 
     // Initialize shell state
     let mut state = ShellState::new()?;
