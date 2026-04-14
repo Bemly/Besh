@@ -40,14 +40,19 @@ pub fn run_shell(args: Vec<String>) -> Result<()> {
     // Setup signal handlers
     setup_signal_handlers()?;
 
-    // Put shell in its own process group
+    // Put shell in its own process group (only if not already group leader)
     let shell_pid = unsafe { libc::getpid() };
-    unsafe {
-        libc::setpgid(shell_pid, shell_pid);
+    let shell_pgid = unsafe { libc::getpgrp() };
+
+    if shell_pid != shell_pgid {
+        // Shell is not the process group leader, try to create own group
+        unsafe {
+            libc::setpgid(shell_pid, shell_pid);
+        }
     }
 
-    // Take control of terminal
-    set_foreground_pgroup(libc::STDIN_FILENO, shell_pid)?;
+    // Take control of terminal (ignore errors if already have control)
+    let _ = set_foreground_pgroup(libc::STDIN_FILENO, shell_pgid);
 
     // Initialize shell state
     let mut state = ShellState::new()?;
