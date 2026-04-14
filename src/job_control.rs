@@ -4,7 +4,7 @@
 
 use crate::error::{Result, ShellError};
 use crate::process::{Fd, Pipe};
-use crate::signal::{set_foreground_pgroup, get_foreground_pgroup, get_shell_pgid};
+use crate::signal::{set_foreground_pgroup, get_foreground_pgroup};
 
 /// Job state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,7 +82,7 @@ pub struct JobControl {
 impl JobControl {
     /// Create a new job control manager
     pub fn new() -> Result<Self> {
-        let shell_pgid = get_shell_pgid();
+        let shell_pgid = unsafe { libc::getpgrp() };
         let terminal_fd = libc::STDIN_FILENO;
 
         Ok(JobControl {

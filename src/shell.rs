@@ -7,7 +7,7 @@ use crate::history::History;
 use crate::job_control::JobControl;
 use crate::parser::{parse_command_line, Command};
 use crate::process::{Pipe, ProcessBuilder, Redirection};
-use crate::signal::{setup_signal_handlers, was_signal_received, set_foreground_pgroup};
+use crate::signal::{setup_signal_handlers, was_signal_received};
 use crate::terminal::{isatty, Terminal, color};
 use std::collections::VecDeque;
 use std::io::{self, Write};
@@ -39,20 +39,6 @@ pub fn run_shell(args: Vec<String>) -> Result<()> {
 
     // Setup signal handlers
     setup_signal_handlers()?;
-
-    // Put shell in its own process group (only if not already group leader)
-    let shell_pid = unsafe { libc::getpid() };
-    let shell_pgid = unsafe { libc::getpgrp() };
-
-    if shell_pid != shell_pgid {
-        // Shell is not the process group leader, try to create own group
-        unsafe {
-            libc::setpgid(shell_pid, shell_pid);
-        }
-    }
-
-    // Take control of terminal (ignore errors if already have control)
-    let _ = set_foreground_pgroup(libc::STDIN_FILENO, shell_pgid);
 
     // Initialize shell state
     let mut state = ShellState::new()?;
@@ -468,6 +454,11 @@ fn execute_commands(
         return result.map(|_| ());
     }
 
+    // Single external command - use simple fork/wait without job control
+    if commands.len() == 1 && !commands[0].background {
+        return execute_single_foreground(&commands[0], state);
+    }
+
     // Handle pipeline or background jobs
     let is_pipeline = commands.len() > 1;
 
@@ -643,3 +634,28 @@ fn open_file_to_redir(path: &str, flags: libc::c_int, mode: libc::c_int) -> Resu
     }
 }
 
+/// Execute a single external command in the foreground (simple fork/wait)
+fn execute_single_foreground(cmd: &Command, _state: &mut ShellState) -> Result<()> {
+    let mut builder = ProcessBuilder::new(&cmd.program);
+    builder = builder.args_ref(&cmd.args);
+
+    if let Some(ref redir) = cmd.stdin {
+        builder = builder.stdin(redir.clone());
+    }
+    if let Some(ref redir) = cmd.stdout {
+        builder = builder.stdout(redir.clone());
+    }
+    if let Some(ref redir) = cmd.stderr {
+        builder = builder.stderr(redir.clone());
+    }
+
+    let process = builder.spawn()?;
+
+    // Simple wait for the child process
+    let mut status: libc::c_int = 0;
+    unsafe {
+        libc::waitpid(process.pid(), &mut status, 0);
+    }
+
+    Ok(())
+}

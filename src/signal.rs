@@ -145,6 +145,7 @@ impl Drop for SignalGuard {
 }
 
 /// Get the shell's process group ID
+#[allow(dead_code)]
 pub fn get_shell_pgid() -> libc::pid_t {
     unsafe { libc::getpgrp() }
 }
