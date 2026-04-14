@@ -7,7 +7,7 @@ use crate::history::History;
 use crate::job_control::JobControl;
 use crate::parser::{parse_command_line, Command};
 use crate::process::{Fd, Pipe, ProcessBuilder, Redirection};
-use crate::signal::{setup_signal_handlers, was_signal_received, get_shell_pgid, set_foreground_pgroup};
+use crate::signal::{setup_signal_handlers, was_signal_received};
 use crate::terminal::{isatty, Terminal, color};
 use std::collections::VecDeque;
 use std::io::{self, Write};
@@ -51,9 +51,6 @@ pub fn run_shell(args: Vec<String>) -> Result<()> {
 
     // Initialize job control
     let mut job_control = JobControl::new()?;
-
-    // Give the shell control of the terminal
-    set_foreground_pgroup(libc::STDIN_FILENO, get_shell_pgid())?;
 
     // Enter REPL loop
     repl(&mut state, &mut environment, &mut history, &mut job_control)
@@ -563,17 +560,23 @@ fn execute_commands(
             builder = builder.stderr(redir);
         }
 
-        // Spawn process
-        let process = builder.spawn()?;
-
-        // Set process group
+        // Set process group - first process becomes the group leader
         let pgid = if first_pgid == 0 {
-            process.pid()
+            0 // Child will use its own pid as pgid
         } else {
             first_pgid
         };
+        builder = builder.pgid(pgid);
 
-        job_control.add_process_to_job(process.pid(), pgid)?;
+        // Spawn process
+        let process = builder.spawn()?;
+
+        // Track process group
+        let pgid = if first_pgid == 0 {
+            process.pid() // First process is the group leader
+        } else {
+            first_pgid
+        };
 
         if first_pgid == 0 {
             first_pgid = pgid;

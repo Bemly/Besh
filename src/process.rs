@@ -161,6 +161,7 @@ pub struct ProcessBuilder {
     stdin: Option<Redirection>,
     stdout: Option<Redirection>,
     stderr: Option<Redirection>,
+    pgid: Option<libc::pid_t>,
 }
 
 /// Type of redirection for a stream
@@ -185,6 +186,7 @@ impl ProcessBuilder {
             stdin: None,
             stdout: None,
             stderr: None,
+            pgid: None,
         }
     }
 
@@ -235,13 +237,19 @@ impl ProcessBuilder {
         self
     }
 
+    /// Set process group ID for the spawned process
+    pub fn pgid(mut self, pgid: libc::pid_t) -> Self {
+        self.pgid = Some(pgid);
+        self
+    }
+
     /// Spawn the process (fork/exec)
     pub fn spawn(self) -> Result<Process> {
         let c_program = CString::new(self.program.clone())
             .map_err(|_| ShellError::ParseError("Invalid program name".to_string()))?;
 
         // Convert arguments to C strings
-        let mut c_args: Vec<CString> = self.args
+        let c_args: Vec<CString> = self.args
             .iter()
             .map(|arg| {
                 CString::new(arg.as_str())
@@ -258,15 +266,38 @@ impl ProcessBuilder {
         // Insert program name at the start
         argv.insert(0, c_program.as_ptr() as *mut libc::c_char);
 
+        // Create a pipe for synchronizing setpgid between parent and child
+        let mut sync_fds = [-1 as libc::c_int; 2];
+        unsafe {
+            if libc::pipe(sync_fds.as_mut_ptr()) < 0 {
+                return Err(ShellError::IoError(io::Error::last_os_error()));
+            }
+        }
+
+        let pgid = self.pgid;
+
         unsafe {
             let pid = libc::fork();
 
             if pid < 0 {
+                libc::close(sync_fds[0]);
+                libc::close(sync_fds[1]);
                 return Err(ShellError::IoError(io::Error::last_os_error()));
             }
 
             if pid == 0 {
                 // Child process
+                libc::close(sync_fds[1]); // Close write end
+
+                // Set process group (child side)
+                let target_pgid = pgid.unwrap_or(0); // 0 = use own pid
+                libc::setpgid(0, target_pgid);
+
+                // Wait for parent to also set pgid
+                let mut buf = [0u8; 1];
+                libc::read(sync_fds[0], buf.as_mut_ptr() as *mut libc::c_void, 1);
+                libc::close(sync_fds[0]);
+
                 if let Err(e) = self.set_up_redirections() {
                     eprintln!("besh: {}", e);
                     libc::_exit(127);
@@ -281,6 +312,20 @@ impl ProcessBuilder {
             }
 
             // Parent process
+            libc::close(sync_fds[0]); // Close read end
+
+            // Set process group (parent side)
+            if let Some(target_pgid) = pgid {
+                libc::setpgid(pid, target_pgid);
+            } else {
+                libc::setpgid(pid, pid);
+            }
+
+            // Signal child that pgid is set
+            let buf = [1u8];
+            libc::write(sync_fds[1], buf.as_ptr() as *const libc::c_void, 1);
+            libc::close(sync_fds[1]);
+
             Ok(Process { pid })
         }
     }
