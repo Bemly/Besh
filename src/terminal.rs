@@ -120,7 +120,10 @@ impl Terminal {
     }
 
     /// Read a line with editing, history navigation, and tab completion
-    pub fn read_line(&self, history: &mut crate::history::History) -> io::Result<String> {
+    pub fn read_line(&mut self, history: &mut crate::history::History) -> io::Result<String> {
+        // Enter raw mode for character-by-character input
+        self.set_raw_mode()?;
+
         let mut line = String::new();
         let mut cursor: usize = 0;
         let mut history_mode = false;
@@ -133,6 +136,7 @@ impl Terminal {
                 '\n' | '\r' => {
                     // Enter - submit line
                     println!();
+                    self.restore_mode()?;
                     return Ok(line);
                 }
                 '\x08' | '\x7f' => {
@@ -146,11 +150,13 @@ impl Terminal {
                 '\x03' => {
                     // Ctrl+C - clear line
                     println!();
+                    self.restore_mode()?;
                     return Ok(String::new());
                 }
                 '\x04' => {
                     // Ctrl+D (EOF)
                     if line.is_empty() {
+                        self.restore_mode()?;
                         return Ok(String::new());
                     }
                 }

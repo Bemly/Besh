@@ -40,11 +40,13 @@ pub fn run_shell(args: Vec<String>) -> Result<()> {
     // Setup signal handlers
     setup_signal_handlers()?;
 
-    // Put shell in its own process group and take control of terminal
+    // Put shell in its own process group
     let shell_pid = unsafe { libc::getpid() };
     unsafe {
         libc::setpgid(shell_pid, shell_pid);
     }
+
+    // Take control of terminal
     set_foreground_pgroup(libc::STDIN_FILENO, shell_pid)?;
 
     // Initialize shell state
@@ -426,16 +428,12 @@ fn repl(
     }
 }
 
-/// Read a line from stdin with raw processing
-fn read_line(terminal: &mut Terminal, history: &mut History) -> Result<String> {
-    if isatty() {
-        terminal.read_line(history).map_err(ShellError::IoError)
-    } else {
-        let mut buffer = String::new();
-        io::stdin().read_line(&mut buffer)
-            .map_err(ShellError::IoError)?;
-        Ok(buffer.trim().to_string())
-    }
+/// Read a line from stdin
+fn read_line(_terminal: &mut Terminal, _history: &mut History) -> Result<String> {
+    let mut buffer = String::new();
+    io::stdin().read_line(&mut buffer)
+        .map_err(ShellError::IoError)?;
+    Ok(buffer.trim().to_string())
 }
 
 /// Check if this is an exit command
