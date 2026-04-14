@@ -44,8 +44,8 @@ fn main() {
             }
             // Version
             "-v" | "--version" => {
-                println!("BESH version 0.1.0");
-                println!("Written by Bemly_. 2024.08.08");
+                println!("BESH version 26.4.14");
+                println!("Written by Bemly_. 2026.04.14");
             }
             // Execute single command
             _ => {
