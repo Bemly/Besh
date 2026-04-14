@@ -25,10 +25,12 @@ pub struct Job {
     /// Job state
     pub state: JobState,
     /// Is background job
+    #[allow(dead_code)]
     pub background: bool,
     /// Job number
     pub job_num: usize,
     /// Notified flag
+    #[allow(dead_code)]
     pub notified: bool,
 }
 
@@ -52,16 +54,14 @@ impl Job {
 
     /// Update job state from wait status
     pub fn update_state(&mut self, status: libc::c_int) {
-        unsafe {
-            if libc::WIFEXITED(status) {
-                self.state = JobState::Done;
-            } else if libc::WIFSIGNALED(status) {
-                self.state = JobState::Terminated;
-            } else if libc::WIFSTOPPED(status) {
-                self.state = JobState::Stopped;
-            } else if libc::WIFCONTINUED(status) {
-                self.state = JobState::Running;
-            }
+        if libc::WIFEXITED(status) {
+            self.state = JobState::Done;
+        } else if libc::WIFSIGNALED(status) {
+            self.state = JobState::Terminated;
+        } else if libc::WIFSTOPPED(status) {
+            self.state = JobState::Stopped;
+        } else if libc::WIFCONTINUED(status) {
+            self.state = JobState::Running;
         }
     }
 }
@@ -94,6 +94,7 @@ impl JobControl {
     }
 
     /// Add process to a job (set process group)
+    #[allow(dead_code)]
     pub fn add_process_to_job(&self, pid: libc::pid_t, pgid: libc::pid_t) -> Result<()> {
         unsafe {
             if libc::setpgid(pid, pgid) < 0 {
@@ -142,7 +143,7 @@ impl JobControl {
                     // Process completed
                 } else if libc::WIFSTOPPED(status) {
                     // Process was stopped
-                    if let Some(job) = self.find_job_by_pgid(pgid) {
+                    if let Some(_job) = self.find_job_by_pgid(pgid) {
                         self.update_job_state(pgid, status);
                         return Ok(JobState::Stopped);
                     }
@@ -157,7 +158,7 @@ impl JobControl {
         }
 
         // Restore terminal control to shell
-        let result = set_foreground_pgroup(self.terminal_fd, self.shell_pgid);
+        let _result = set_foreground_pgroup(self.terminal_fd, self.shell_pgid);
 
         if let Some(job) = self.find_job_by_pgid(pgid) {
             let job_state = job.state;
@@ -166,14 +167,12 @@ impl JobControl {
             }
             Ok(job_state)
         } else {
-            let state = unsafe {
-                if libc::WIFEXITED(last_status) {
-                    JobState::Done
-                } else if libc::WIFSIGNALED(last_status) {
-                    JobState::Terminated
-                } else {
-                    JobState::Running
-                }
+            let state = if libc::WIFEXITED(last_status) {
+                JobState::Done
+            } else if libc::WIFSIGNALED(last_status) {
+                JobState::Terminated
+            } else {
+                JobState::Running
             };
             Ok(state)
         }
@@ -196,6 +195,7 @@ impl JobControl {
     }
 
     /// Find job by job number
+    #[allow(dead_code)]
     pub fn find_job_by_num(&mut self, job_num: usize) -> Option<&mut Job> {
         self.jobs.iter_mut().find(|j| j.job_num == job_num)
     }
@@ -227,16 +227,19 @@ impl JobControl {
     }
 
     /// List jobs
+    #[allow(dead_code)]
     pub fn list_jobs(&self) -> Vec<&Job> {
         self.jobs.iter().collect()
     }
 
     /// Get shell's process group
+    #[allow(dead_code)]
     pub fn shell_pgid(&self) -> libc::pid_t {
         self.shell_pgid
     }
 
     /// Check if terminal has foreground control
+    #[allow(dead_code)]
     pub fn has_terminal_control(&mut self) -> bool {
         match get_foreground_pgroup(self.terminal_fd) {
             Ok(pgrp) => pgrp == self.shell_pgid,
@@ -245,6 +248,7 @@ impl JobControl {
     }
 
     /// Wait for any job to complete or change state (non-blocking via WNOHANG)
+    #[allow(dead_code)]
     pub fn check_jobs(&mut self) -> Vec<(libc::pid_t, libc::c_int)> {
         let mut results = Vec::new();
 

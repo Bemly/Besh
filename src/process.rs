@@ -5,7 +5,6 @@
 use crate::error::{Result, ShellError};
 use std::ffi::CString;
 use std::io;
-use std::os::unix::io::RawFd;
 
 /// File descriptors for standard streams
 pub type Fd = libc::c_int;
@@ -60,6 +59,7 @@ impl Drop for Pipe {
 
 /// Exit status of a process
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum ExitStatus {
     /// Process exited with a code
     Exited(u8),
@@ -73,11 +73,13 @@ pub enum ExitStatus {
 
 impl ExitStatus {
     /// Returns true if the process exited successfully
+    #[allow(dead_code)]
     pub fn success(&self) -> bool {
         matches!(self, ExitStatus::Exited(0))
     }
 
     /// Returns the exit code if the process exited normally
+    #[allow(dead_code)]
     pub fn code(&self) -> Option<u8> {
         match self {
             ExitStatus::Exited(c) => Some(*c),
@@ -99,11 +101,13 @@ impl Process {
     }
 
     /// Wait for the process to complete and get its exit status
+    #[allow(dead_code)]
     pub fn wait(&self) -> Result<ExitStatus> {
         self.wait_with_options(0)
     }
 
     /// Wait for the process with WNOHANG option (non-blocking)
+    #[allow(dead_code)]
     pub fn try_wait(&self) -> Result<Option<ExitStatus>> {
         self.wait_with_options(libc::WNOHANG)
             .map(|s| if s == ExitStatus::Continued { None } else { Some(s) })
@@ -138,6 +142,7 @@ impl Process {
     }
 
     /// Kill the process with a signal
+    #[allow(dead_code)]
     pub fn kill(&self, signal: libc::c_int) -> Result<()> {
         unsafe {
             if libc::kill(self.pid, signal) < 0 {
@@ -148,6 +153,7 @@ impl Process {
     }
 
     /// Send SIGCONT to continue a stopped process
+    #[allow(dead_code)]
     pub fn continue_(&self) -> Result<()> {
         self.kill(libc::SIGCONT)
     }
@@ -174,6 +180,7 @@ pub enum Redirection {
     /// Redirect to a pipe (read or write end)
     Pipe(Fd),
     /// No change (use default)
+    #[allow(dead_code)]
     Inherit,
 }
 
@@ -191,12 +198,14 @@ impl ProcessBuilder {
     }
 
     /// Add an argument to the command
+    #[allow(dead_code)]
     pub fn arg<S: Into<String>>(mut self, arg: S) -> Self {
         self.args.push(arg.into());
         self
     }
 
     /// Add multiple arguments to the command
+    #[allow(dead_code)]
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -417,6 +426,7 @@ fn redirect_fd(from: Fd, to: Fd) -> Result<()> {
 }
 
 /// Close all file descriptors greater than 2
+#[allow(dead_code)]
 pub fn close_all_fds_except(except: &[Fd]) -> Result<()> {
     unsafe {
         let mut fd = 3;

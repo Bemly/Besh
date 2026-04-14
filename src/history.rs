@@ -109,6 +109,7 @@ impl History {
     }
 
     /// Get history entry by index (positive or negative)
+    #[allow(dead_code)]
     pub fn get(&self, index: Option<i32>) -> Option<String> {
         let len = self.entries.len();
         if len == 0 {
@@ -134,6 +135,7 @@ impl History {
     }
 
     /// Get the next history entry (for arrow up/down)
+    #[allow(dead_code)]
     pub fn next(&mut self) -> Option<String> {
         let len = self.entries.len();
         if len == 0 {
@@ -155,6 +157,7 @@ impl History {
     }
 
     /// Get the previous history entry (for arrow down)
+    #[allow(dead_code)]
     pub fn prev(&mut self) -> Option<String> {
         let len = self.entries.len();
 
@@ -173,17 +176,20 @@ impl History {
     }
 
     /// Get all history entries
+    #[allow(dead_code)]
     pub fn entries(&self) -> &[String] {
         &self.entries
     }
 
     /// Clear history
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.entries.clear();
         self.current_index = None;
     }
 
     /// Get history file path
+    #[allow(dead_code)]
     pub fn file(&self) -> &PathBuf {
         &self.history_file
     }

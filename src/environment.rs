@@ -42,18 +42,20 @@ impl Environment {
     }
 
     /// Get a variable (shell variables first, then process environment)
+    #[allow(dead_code)]
     pub fn get(&self, name: &str) -> Option<String> {
         self.variables.get(name).cloned().or_else(|| std::env::var(name).ok())
     }
 
     /// Unset a variable
+    #[allow(dead_code)]
     pub fn unset(&mut self, name: &str) -> Result<()> {
         self.variables.remove(name);
 
         unsafe {
             // Remove from environ
             let mut ptr = crate::environment::environ_ptr();
-            let mut prev_ptr: *mut *mut libc::c_char = crate::environment::environ_ptr();
+            let mut _prev_ptr: *mut *mut libc::c_char = crate::environment::environ_ptr();
 
             while !ptr.is_null() && !(*ptr).is_null() {
                 let var = std::ffi::CStr::from_ptr(*ptr).to_string_lossy();
@@ -66,7 +68,7 @@ impl Environment {
                         current = current.add(1);
                     }
                 } else {
-                    prev_ptr = ptr;
+                    _prev_ptr = ptr;
                 }
 
                 ptr = ptr.add(1);
@@ -77,6 +79,7 @@ impl Environment {
     }
 
     /// Export a variable to the process environment
+    #[allow(dead_code)]
     pub fn export(&mut self, name: &str, value: &str) -> Result<()> {
         self.set(name, value);
 
@@ -88,11 +91,13 @@ impl Environment {
     }
 
     /// Check if a variable is exported
+    #[allow(dead_code)]
     pub fn is_exported(&self, name: &str) -> bool {
         self.exported.get(name).copied().unwrap_or(false)
     }
 
     /// Get all variables
+    #[allow(dead_code)]
     pub fn all(&self) -> HashMap<String, String> {
         let mut all = HashMap::new();
 
@@ -110,6 +115,7 @@ impl Environment {
     }
 
     /// Get all exported variables
+    #[allow(dead_code)]
     pub fn exported_vars(&self) -> Vec<(String, String)> {
         self.all()
             .into_iter()
@@ -118,6 +124,7 @@ impl Environment {
     }
 
     /// Expand variables in a string
+    #[allow(dead_code)]
     pub fn expand(&self, input: &str) -> String {
         crate::parser::expand_variables(input, |k| self.get(k))
     }
@@ -132,6 +139,7 @@ pub fn load_environment(environment: &mut Environment) {
 }
 
 /// Check if a variable exists in the process environ
+#[allow(dead_code)]
 fn has_var_in_environ(name: &str) -> bool {
     unsafe {
         let name_eq = format!("{}=", name);

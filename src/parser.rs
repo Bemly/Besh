@@ -43,6 +43,7 @@ impl Command {
     }
 
     /// Get the command as an argv slice
+    #[allow(dead_code)]
     pub fn as_argv(&self) -> Vec<String> {
         let mut argv = vec![self.program.clone()];
         argv.extend(self.args.iter().cloned());

@@ -6,8 +6,8 @@ use crate::error::{Result, ShellError};
 use crate::history::History;
 use crate::job_control::JobControl;
 use crate::parser::{parse_command_line, Command};
-use crate::process::{Fd, Pipe, ProcessBuilder, Redirection};
-use crate::signal::{setup_signal_handlers, was_signal_received, set_foreground_pgroup, get_shell_pgid};
+use crate::process::{Pipe, ProcessBuilder, Redirection};
+use crate::signal::{setup_signal_handlers, was_signal_received, set_foreground_pgroup};
 use crate::terminal::{isatty, Terminal, color};
 use std::collections::VecDeque;
 use std::io::{self, Write};
@@ -638,7 +638,3 @@ fn open_file_to_redir(path: &str, flags: libc::c_int, mode: libc::c_int) -> Resu
     }
 }
 
-// External libc functions
-extern "C" {
-    fn gethostname(name: *mut libc::c_char, len: libc::size_t) -> libc::c_int;
-}

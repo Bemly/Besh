@@ -117,11 +117,13 @@ pub enum ExitStatus {
     /// Command succeeded
     Success(u8),
     /// Command failed
+    #[allow(dead_code)]
     Failure(u8),
 }
 
 impl ExitStatus {
     /// Returns true if the command exited successfully
+    #[allow(dead_code)]
     pub fn success(&self) -> bool {
         matches!(self, ExitStatus::Success(0))
     }

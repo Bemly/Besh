@@ -1,6 +1,7 @@
 // Bemly_ Shell - A Unix shell written in Rust with libc
 
 mod builtin;
+#[allow(dead_code)]
 mod common_shell;
 mod environment;
 mod error;
@@ -13,7 +14,6 @@ mod signal;
 mod terminal;
 
 use shell::run_shell;
-use common_shell::main as common_shell;
 
 fn main() {
     // Parse command line arguments

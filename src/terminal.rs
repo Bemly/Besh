@@ -2,8 +2,7 @@
 //!
 //! Provides raw mode terminal handling, character input, and line editing.
 
-use std::io::{self, Read, Write};
-use std::os::fd::AsRawFd;
+use std::io::{self, Write};
 
 pub use libc::{c_int, ECHO, ICANON, ISIG, TCSANOW, VMIN, VTIME, termios};
 
@@ -23,6 +22,7 @@ impl Terminal {
     }
 
     /// Get the current terminal attributes
+    #[allow(dead_code)]
     fn get_termios() -> io::Result<termios> {
         unsafe {
             let mut termios = std::mem::zeroed();
@@ -34,6 +34,7 @@ impl Terminal {
     }
 
     /// Set raw mode - disables canonical mode and echo
+    #[allow(dead_code)]
     pub fn set_raw_mode(&mut self) -> io::Result<()> {
         if self.is_raw {
             return Ok(());
@@ -83,6 +84,7 @@ impl Terminal {
     }
 
     /// Read a single character
+    #[allow(dead_code)]
     pub fn read_char(&self) -> io::Result<char> {
         let mut buffer = [0u8; 1];
 
@@ -97,6 +99,7 @@ impl Terminal {
     }
 
     /// Check if there's input available (non-blocking)
+    #[allow(dead_code)]
     pub fn has_input(&self) -> io::Result<bool> {
         unsafe {
             let mut read_fds = std::mem::zeroed::<libc::fd_set>();
@@ -120,6 +123,7 @@ impl Terminal {
     }
 
     /// Read a line with editing, history navigation, and tab completion
+    #[allow(dead_code)]
     pub fn read_line(&mut self, history: &mut crate::history::History) -> io::Result<String> {
         // Enter raw mode for character-by-character input
         self.set_raw_mode()?;
@@ -310,12 +314,14 @@ impl Terminal {
     }
 
     /// Is terminal in raw mode?
+    #[allow(dead_code)]
     pub fn is_raw(&self) -> bool {
         self.is_raw
     }
 }
 
 /// Redraw the current line, positioning the cursor correctly
+#[allow(dead_code)]
 fn redraw_line(line: &str, cursor: usize) -> io::Result<()> {
     // Move to start of line (carriage return)
     print!("\r");
@@ -333,6 +339,7 @@ fn redraw_line(line: &str, cursor: usize) -> io::Result<()> {
 
 /// Complete a word at the cursor position
 /// Returns a list of possible completions
+#[allow(dead_code)]
 fn complete(line: &str, cursor: usize) -> Vec<String> {
     // Find the current word being typed
     let word_start = line[..cursor].rfind(|c: char| c.is_whitespace()).map_or(0, |i| i + 1);
@@ -434,22 +441,32 @@ pub mod color {
     pub const DIM: &str = "\x1b[2m";
 
     // Foreground colors
+    #[allow(dead_code)]
     pub const BLACK: &str = "\x1b[30m";
     pub const RED: &str = "\x1b[31m";
     pub const GREEN: &str = "\x1b[32m";
     pub const YELLOW: &str = "\x1b[33m";
     pub const BLUE: &str = "\x1b[34m";
+    #[allow(dead_code)]
     pub const MAGENTA: &str = "\x1b[35m";
     pub const CYAN: &str = "\x1b[36m";
+    #[allow(dead_code)]
     pub const WHITE: &str = "\x1b[37m";
 
     // Bright foreground colors
+    #[allow(dead_code)]
     pub const BRIGHT_BLACK: &str = "\x1b[90m";
+    #[allow(dead_code)]
     pub const BRIGHT_RED: &str = "\x1b[91m";
+    #[allow(dead_code)]
     pub const BRIGHT_GREEN: &str = "\x1b[92m";
+    #[allow(dead_code)]
     pub const BRIGHT_YELLOW: &str = "\x1b[93m";
+    #[allow(dead_code)]
     pub const BRIGHT_BLUE: &str = "\x1b[94m";
+    #[allow(dead_code)]
     pub const BRIGHT_MAGENTA: &str = "\x1b[95m";
+    #[allow(dead_code)]
     pub const BRIGHT_CYAN: &str = "\x1b[96m";
 
     /// Check if color output should be used (respects NO_COLOR env var)
@@ -464,6 +481,7 @@ pub fn isatty() -> bool {
 }
 
 /// Get terminal size
+#[allow(dead_code)]
 pub fn terminal_size() -> Option<(usize, usize)> {
     unsafe {
         let mut winsize = std::mem::zeroed::<libc::winsize>();
@@ -477,7 +495,7 @@ pub fn terminal_size() -> Option<(usize, usize)> {
     }
 }
 
-/// External libc functions
+// External libc functions
 #[link(name = "c")]
 extern "C" {
     fn tcgetattr(fd: c_int, termios_p: *mut termios) -> c_int;

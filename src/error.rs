@@ -15,12 +15,16 @@ pub enum ShellError {
     /// Parse error with message
     ParseError(String),
     /// Signal error with message
+    #[allow(dead_code)]
     SignalError(String),
     /// Job control error
+    #[allow(dead_code)]
     JobError(String),
     /// Variable error
+    #[allow(dead_code)]
     VariableError(String),
     /// Already exists
+    #[allow(dead_code)]
     AlreadyExists(String),
     /// Not found
     NotFound(String),

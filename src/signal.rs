@@ -8,6 +8,7 @@ static mut SIGNAL_RECEIVED: bool = false;
 
 /// Signal types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum Signal {
     SigInt,  // Ctrl+C
     SigTstp, // Ctrl+Z
@@ -15,6 +16,7 @@ pub enum Signal {
 }
 
 /// Signal action handler type
+#[allow(dead_code)]
 type SignalHandler = extern "C" fn(libc::c_int);
 
 /// Setup signal handlers for the shell
@@ -23,7 +25,7 @@ pub fn setup_signal_handlers() -> Result<()> {
         let mut sigint_action: libc::sigaction = std::mem::zeroed();
         libc::sigemptyset(&mut sigint_action.sa_mask);
         sigint_action.sa_flags = libc::SA_RESTART;
-        sigint_action.sa_sigaction = sigint_handler as usize;
+        sigint_action.sa_sigaction = sigint_handler as *const () as usize;
 
         if libc::sigaction(libc::SIGINT, &sigint_action, std::ptr::null_mut()) < 0 {
             return Err(ShellError::IoError(std::io::Error::last_os_error()));
@@ -32,7 +34,7 @@ pub fn setup_signal_handlers() -> Result<()> {
         let mut sigtstp_action: libc::sigaction = std::mem::zeroed();
         libc::sigemptyset(&mut sigtstp_action.sa_mask);
         sigtstp_action.sa_flags = libc::SA_RESTART;
-        sigtstp_action.sa_sigaction = sigtstp_handler as usize;
+        sigtstp_action.sa_sigaction = sigtstp_handler as *const () as usize;
 
         if libc::sigaction(libc::SIGTSTP, &sigtstp_action, std::ptr::null_mut()) < 0 {
             return Err(ShellError::IoError(std::io::Error::last_os_error()));
@@ -41,7 +43,7 @@ pub fn setup_signal_handlers() -> Result<()> {
         let mut sigchld_action: libc::sigaction = std::mem::zeroed();
         libc::sigemptyset(&mut sigchld_action.sa_mask);
         sigchld_action.sa_flags = libc::SA_RESTART | libc::SA_NOCLDSTOP;
-        sigchld_action.sa_sigaction = sigchld_handler as usize;
+        sigchld_action.sa_sigaction = sigchld_handler as *const () as usize;
 
         if libc::sigaction(libc::SIGCHLD, &sigchld_action, std::ptr::null_mut()) < 0 {
             return Err(ShellError::IoError(std::io::Error::last_os_error()));
@@ -78,6 +80,7 @@ extern "C" fn sigchld_handler(_signum: libc::c_int) {
 }
 
 /// Block signals for critical sections
+#[allow(dead_code)]
 pub fn block_signals() -> Result<libc::sigset_t> {
     let mut old_mask: libc::sigset_t = unsafe { std::mem::zeroed() };
     let mut block_mask: libc::sigset_t = unsafe { std::mem::zeroed() };
@@ -97,6 +100,7 @@ pub fn block_signals() -> Result<libc::sigset_t> {
 }
 
 /// Unblock signals
+#[allow(dead_code)]
 pub fn unblock_signals(old_mask: &libc::sigset_t) -> Result<()> {
     unsafe {
         if libc::sigprocmask(libc::SIG_SETMASK, old_mask, std::ptr::null_mut()) < 0 {
@@ -116,12 +120,14 @@ pub fn was_signal_received() -> bool {
 }
 
 /// Temporarily block signals in a scope
+#[allow(dead_code)]
 pub struct SignalGuard {
     old_mask: Option<libc::sigset_t>,
 }
 
 impl SignalGuard {
     /// Create a new signal guard by blocking all shell signals
+    #[allow(dead_code)]
     pub fn new() -> Result<Self> {
         let old_mask = block_signals()?;
         Ok(SignalGuard {
@@ -144,6 +150,7 @@ pub fn get_shell_pgid() -> libc::pid_t {
 }
 
 /// Get the shell's process ID
+#[allow(dead_code)]
 pub fn get_shell_pid() -> libc::pid_t {
     unsafe { libc::getpid() }
 }
@@ -159,6 +166,7 @@ pub fn set_foreground_pgroup(fd: libc::c_int, pgrp: libc::pid_t) -> Result<()> {
 }
 
 /// Get terminal foreground process group
+#[allow(dead_code)]
 pub fn get_foreground_pgroup(fd: libc::c_int) -> Result<libc::pid_t> {
     unsafe {
         let pgrp = libc::tcgetpgrp(fd);
@@ -171,7 +179,9 @@ pub fn get_foreground_pgroup(fd: libc::c_int) -> Result<libc::pid_t> {
 
 #[link(name = "c")]
 extern "C" {
+    #[allow(dead_code)]
     fn tcgetpgrp(fd: libc::c_int) -> libc::pid_t;
+    #[allow(dead_code)]
     fn tcsetpgrp(fd: libc::c_int, pgrp: libc::pid_t) -> libc::c_int;
 }
 
